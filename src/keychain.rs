@@ -1,8 +1,11 @@
 use crate::error::{Error, Result};
 use crate::secret_gen;
 use std::fs;
-use std::os::unix::fs::PermissionsExt;
+use std::io::Write;
 use std::path::PathBuf;
+
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
 const SERVICE_NAME: &str = "secret-agent";
 const MASTER_KEY_NAME: &str = "master-key";
@@ -115,15 +118,21 @@ fn store_in_file(key: &str) -> Result<()> {
         fs::create_dir_all(parent)?;
     }
 
-    // Write key to file
-    fs::write(&path, key)?;
-
-    // Set restrictive permissions (600 = owner read/write only)
+    // Write key to file with restrictive permissions set atomically
     #[cfg(unix)]
     {
-        let mut perms = fs::metadata(&path)?.permissions();
-        perms.set_mode(0o600);
-        fs::set_permissions(&path, perms)?;
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600) // Set permissions atomically on creation
+            .open(&path)?;
+        file.write_all(key.as_bytes())?;
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::write(&path, key)?;
     }
 
     eprintln!(
@@ -166,4 +175,133 @@ pub fn delete_master_key() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::TempDir;
+
+    fn store_in_file_at(path: &std::path::Path, key: &str) -> Result<()> {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+
+        #[cfg(unix)]
+        {
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .mode(0o600)
+                .open(path)?;
+            file.write_all(key.as_bytes())?;
+        }
+
+        #[cfg(not(unix))]
+        {
+            fs::write(path, key)?;
+        }
+
+        Ok(())
+    }
+
+    fn get_from_file_at(path: &std::path::Path) -> Result<Option<String>> {
+        if !path.exists() {
+            return Ok(None);
+        }
+
+        #[cfg(unix)]
+        {
+            let metadata = fs::metadata(path)?;
+            let mode = metadata.permissions().mode();
+            if mode & 0o077 != 0 {
+                return Err(Error::Keychain(format!(
+                    "master key file has insecure permissions {:o}, expected 600",
+                    mode & 0o777
+                )));
+            }
+        }
+
+        let content = fs::read_to_string(path)?;
+        Ok(Some(content.trim().to_string()))
+    }
+
+    #[test]
+    fn test_file_storage_roundtrip() {
+        let temp_dir = TempDir::new().unwrap();
+        let key_path = temp_dir.path().join("master.key");
+
+        let original_key = "test-master-key-12345";
+        store_in_file_at(&key_path, original_key).unwrap();
+
+        let retrieved = get_from_file_at(&key_path).unwrap();
+        assert_eq!(retrieved, Some(original_key.to_string()));
+    }
+
+    #[test]
+    fn test_file_not_found_returns_none() {
+        let temp_dir = TempDir::new().unwrap();
+        let key_path = temp_dir.path().join("nonexistent.key");
+
+        let result = get_from_file_at(&key_path).unwrap();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_rejects_insecure_permissions() {
+        let temp_dir = TempDir::new().unwrap();
+        let key_path = temp_dir.path().join("insecure.key");
+
+        // Write file with insecure permissions (644)
+        fs::write(&key_path, "secret-key").unwrap();
+        let mut perms = fs::metadata(&key_path).unwrap().permissions();
+        perms.set_mode(0o644);
+        fs::set_permissions(&key_path, perms).unwrap();
+
+        let result = get_from_file_at(&key_path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("insecure permissions"));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn test_file_created_with_600_permissions() {
+        let temp_dir = TempDir::new().unwrap();
+        let key_path = temp_dir.path().join("secure.key");
+
+        store_in_file_at(&key_path, "test-key").unwrap();
+
+        let metadata = fs::metadata(&key_path).unwrap();
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "Expected 600 permissions, got {:o}", mode);
+    }
+
+    #[test]
+    fn test_file_storage_trims_whitespace() {
+        let temp_dir = TempDir::new().unwrap();
+        let key_path = temp_dir.path().join("master.key");
+
+        // Write key with trailing newline
+        #[cfg(unix)]
+        {
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create(true)
+                .mode(0o600)
+                .open(&key_path)
+                .unwrap();
+            file.write_all(b"my-key-value\n").unwrap();
+        }
+
+        #[cfg(not(unix))]
+        {
+            fs::write(&key_path, "my-key-value\n").unwrap();
+        }
+
+        let retrieved = get_from_file_at(&key_path).unwrap();
+        assert_eq!(retrieved, Some("my-key-value".to_string()));
+    }
 }
