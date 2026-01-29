@@ -1,0 +1,28 @@
+[package]
+name = "secret-agent"
+version = "0.1.0"
+edition = "2021"
+description = "A CLI vault that keeps secrets out of AI agent traces"
+license = "MIT"
+repository = "https://github.com/paperMoose/secret-agent"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+age = "0.11"
+rusqlite = { version = "0.32", features = ["bundled"] }
+keyring = { version = "3", features = ["apple-native", "sync-secret-service"] }
+rand = "0.8"
+regex = "1"
+thiserror = "2"
+anyhow = "1"
+base64 = "0.22"
+urlencoding = "2"
+chrono = "0.4"
+rpassword = "7"
+atty = "0.2"
+dirs = "5"
+
+[dev-dependencies]
+tempfile = "3"
+assert_cmd = "2"
+predicates = "3"
