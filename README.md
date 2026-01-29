@@ -47,8 +47,8 @@ The agent never sees `sk-1234567890`. It only knows the *name* `OPENAI_KEY`.
 ## Quick Start
 
 ```bash
-# Install (from source for now)
-cargo install --path .
+# Install from crates.io
+cargo install secret-agent
 
 # Import a secret (interactive prompt, value never in shell history)
 secret-agent import OPENAI_KEY
