@@ -69,37 +69,33 @@ secret-agent inject DB_PASS --file .env --env-format
 secret-agent -q create CI_TOKEN
 ```
 
+## Setup
+
+Add to your `~/.zshrc` or `~/.bashrc`:
+
+```bash
+export SECRET_AGENT_USE_FILE=1
+```
+
+This stores the master key in `~/.secret-agent/master.key` (chmod 600) instead of the system keychain, avoiding permission prompts.
+
 ## Platform Support
 
-| Platform | Master Key Storage | Notes |
+| Platform | Recommended Setup | Notes |
 |----------|-------------------|-------|
-| **macOS** | Keychain Access | Touch ID supported if enabled in System Settings |
-| **Linux (Desktop)** | GNOME Keyring / KWallet | Via Secret Service API |
-| **Linux (Headless)** | `~/.secret-agent/master.key` | File with 600 permissions |
+| **macOS** | `SECRET_AGENT_USE_FILE=1` | Avoids Keychain permission prompts |
+| **Linux (Desktop)** | `SECRET_AGENT_USE_FILE=1` | Or uses GNOME Keyring if available |
+| **Linux (Headless)** | Auto-detected | File storage used automatically |
 | **CI/Automation** | `SECRET_AGENT_PASSPHRASE` env var | Highest priority |
 
-### Authentication Priority
+### Alternative: System Keychain
 
-1. `SECRET_AGENT_PASSPHRASE` environment variable (for CI/scripts)
-2. System keychain (macOS Keychain, Linux Secret Service)
-3. File-based key at `~/.secret-agent/master.key` (headless fallback)
-4. Interactive passphrase prompt (last resort)
-
-### macOS Touch ID
-
-To require Touch ID for vault access:
-1. Open **Keychain Access**
-2. Find the `secret-agent` entry
-3. Get Info → Access Control → Require Touch ID
-
-### Linux Headless Servers
-
-On servers without D-Bus/Secret Service, the master key is stored in `~/.secret-agent/master.key` with `chmod 600` permissions. The tool detects headless environments automatically.
-
-For extra security on servers, set the passphrase via environment:
-```bash
-export SECRET_AGENT_PASSPHRASE="your-secure-passphrase"
-```
+If you prefer system keychain (macOS Keychain, GNOME Keyring):
+1. Don't set `SECRET_AGENT_USE_FILE`
+2. On macOS: ad-hoc sign the binary to avoid repeated prompts:
+   ```bash
+   codesign -s - ~/.cargo/bin/secret-agent
+   ```
 
 ## Commands
 

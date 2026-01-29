@@ -13,16 +13,22 @@ const MASTER_KEY_LENGTH: usize = 32;
 
 /// Get the master key with fallback chain:
 /// 1. Environment variable SECRET_AGENT_PASSPHRASE (for CI/scripts)
-/// 2. System keychain (macOS Keychain, Linux Secret Service)
-/// 3. Encrypted file at ~/.secret-agent/master.key (headless Linux)
-/// 4. Interactive passphrase prompt (last resort)
+/// 2. File-based key if SECRET_AGENT_USE_FILE=1 (skip keychain prompts)
+/// 3. System keychain (macOS Keychain, Linux Secret Service)
+/// 4. File at ~/.secret-agent/master.key (headless fallback)
+/// 5. Interactive passphrase prompt (last resort)
 pub fn get_or_create_master_key() -> Result<String> {
     // 1. Check environment variable first (highest priority for CI/automation)
     if let Ok(key) = std::env::var("SECRET_AGENT_PASSPHRASE") {
         return Ok(key);
     }
 
-    // 2. Try system keychain
+    // 2. If user prefers file-based storage (avoids keychain prompts)
+    if std::env::var("SECRET_AGENT_USE_FILE").is_ok() {
+        return get_or_create_file_key();
+    }
+
+    // 3. Try system keychain
     match get_from_keychain() {
         Ok(Some(key)) => return Ok(key),
         Ok(None) => {
@@ -146,6 +152,17 @@ fn store_in_file(key: &str) -> Result<()> {
 fn should_use_file_fallback() -> bool {
     // Use file fallback on headless systems (no TTY and no keychain)
     !atty::is(atty::Stream::Stdin) || std::env::var("SSH_TTY").is_ok()
+}
+
+fn get_or_create_file_key() -> Result<String> {
+    if let Some(key) = get_from_file()? {
+        return Ok(key);
+    }
+
+    // Generate and store new key
+    let key = secret_gen::generate(MASTER_KEY_LENGTH, secret_gen::Charset::Alphanumeric);
+    store_in_file(&key)?;
+    Ok(key)
 }
 
 fn prompt_for_passphrase() -> Result<String> {
