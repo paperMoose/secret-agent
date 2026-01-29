@@ -33,10 +33,14 @@ pub enum Commands {
         force: bool,
     },
 
-    /// Import a secret from stdin or interactive prompt
+    /// Import a secret from stdin, clipboard, or interactive prompt
     Import {
         /// Name of the secret
         name: String,
+
+        /// Read secret value from clipboard
+        #[arg(long)]
+        clipboard: bool,
     },
 
     /// List all secret names

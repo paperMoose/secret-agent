@@ -53,6 +53,9 @@ cargo install --path .
 # Import a secret (interactive prompt, value never in shell history)
 secret-agent import OPENAI_KEY
 
+# Import from clipboard (for agent workflows - agent never sees value)
+secret-agent import OPENAI_KEY --clipboard
+
 # Use it in commands
 secret-agent exec "curl -H 'Authorization: Bearer {{OPENAI_KEY}}' https://api.openai.com/v1/models"
 
@@ -104,6 +107,7 @@ If you prefer system keychain (macOS Keychain, GNOME Keyring):
 | `create NAME` | Generate random secret |
 | `create NAME --force` | Overwrite existing secret |
 | `import NAME` | Import from stdin/prompt |
+| `import NAME --clipboard` | Import from clipboard (agent-friendly) |
 | `list` | Show secret names |
 | `delete NAME` | Remove secret |
 | `get NAME --unsafe-display` | Show value (debug only) |

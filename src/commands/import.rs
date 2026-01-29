@@ -2,10 +2,14 @@ use crate::vault::Vault;
 use anyhow::{Context, Result};
 use std::io::{self, BufRead};
 
-pub fn run(name: &str, quiet: bool) -> Result<()> {
+pub fn run(name: &str, clipboard: bool, quiet: bool) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
 
-    let value = read_secret_value()?;
+    let value = if clipboard {
+        read_from_clipboard()?
+    } else {
+        read_secret_value()?
+    };
 
     if value.is_empty() {
         anyhow::bail!("secret value cannot be empty");
@@ -19,6 +23,25 @@ pub fn run(name: &str, quiet: bool) -> Result<()> {
         println!("Imported secret: {}", name);
     }
     Ok(())
+}
+
+fn read_from_clipboard() -> Result<String> {
+    let mut clipboard = arboard::Clipboard::new()
+        .context("failed to access clipboard")?;
+
+    let value = clipboard
+        .get_text()
+        .context("failed to read from clipboard (is it empty or non-text?)")?;
+
+    // Clear clipboard after reading for security
+    let _ = clipboard.clear();
+
+    let trimmed = value.trim().to_string();
+    if trimmed.is_empty() {
+        anyhow::bail!("clipboard is empty");
+    }
+
+    Ok(trimmed)
 }
 
 fn read_secret_value() -> Result<String> {

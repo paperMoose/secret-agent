@@ -1,6 +1,6 @@
 [package]
 name = "secret-agent"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "A CLI vault that keeps secrets out of AI agent traces"
 license = "MIT"
@@ -23,6 +23,7 @@ chrono = "0.4"
 rpassword = "7"
 atty = "0.2"
 dirs = "5"
+arboard = "3"
 
 [dev-dependencies]
 tempfile = "3"
