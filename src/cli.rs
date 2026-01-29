@@ -5,6 +5,10 @@ use clap::{Parser, Subcommand};
 #[command(about = "A CLI vault that keeps secrets out of AI agent traces")]
 #[command(version)]
 pub struct Cli {
+    /// Suppress informational output (for scripting)
+    #[arg(short, long, global = true)]
+    pub quiet: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -23,6 +27,10 @@ pub enum Commands {
         /// Character set: alphanumeric, ascii, hex, base64
         #[arg(short, long, default_value = "alphanumeric")]
         charset: String,
+
+        /// Overwrite if secret already exists
+        #[arg(short, long)]
+        force: bool,
     },
 
     /// Import a secret from stdin or interactive prompt

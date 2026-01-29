@@ -2,7 +2,7 @@ use crate::vault::Vault;
 use anyhow::{Context, Result};
 use std::io::{self, BufRead};
 
-pub fn run(name: &str) -> Result<()> {
+pub fn run(name: &str, quiet: bool) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
 
     let value = read_secret_value()?;
@@ -15,7 +15,9 @@ pub fn run(name: &str) -> Result<()> {
         .create(name, &value)
         .context("failed to import secret")?;
 
-    println!("Imported secret: {}", name);
+    if !quiet {
+        println!("Imported secret: {}", name);
+    }
     Ok(())
 }
 

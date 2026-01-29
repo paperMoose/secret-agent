@@ -2,15 +2,20 @@ use crate::error::Error;
 use crate::sanitize;
 use crate::vault::Vault;
 use anyhow::{Context, Result};
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::HashMap;
 use std::process::Command;
+
+static PLACEHOLDER_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\{\{(\w+)\}\}").expect("invalid placeholder regex")
+});
 
 pub fn run(command: &str) -> Result<i32> {
     let vault = Vault::open().context("failed to open vault")?;
 
     // Parse placeholders from command
-    let placeholder_names = parse_placeholders(command)?;
+    let placeholder_names = parse_placeholders(command);
 
     if placeholder_names.is_empty() {
         // No secrets needed, just run the command
@@ -38,10 +43,8 @@ pub fn run(command: &str) -> Result<i32> {
     execute_command(&injected_command, &secrets)
 }
 
-fn parse_placeholders(command: &str) -> Result<Vec<String>> {
-    let re = Regex::new(r"\{\{(\w+)\}\}").context("failed to compile regex")?;
-
-    let names: Vec<String> = re
+fn parse_placeholders(command: &str) -> Vec<String> {
+    let names: Vec<String> = PLACEHOLDER_RE
         .captures_iter(command)
         .map(|cap| cap[1].to_string())
         .collect();
@@ -53,7 +56,7 @@ fn parse_placeholders(command: &str) -> Result<Vec<String>> {
         .filter(|name| seen.insert(name.clone()))
         .collect();
 
-    Ok(unique)
+    unique
 }
 
 fn inject_secrets(command: &str, secrets: &HashMap<String, String>) -> String {
@@ -97,21 +100,21 @@ mod tests {
     #[test]
     fn test_parse_placeholders() {
         let cmd = "curl -H 'Auth: {{API_KEY}}' --data '{{DATA}}'";
-        let names = parse_placeholders(cmd).unwrap();
+        let names = parse_placeholders(cmd);
         assert_eq!(names, vec!["API_KEY", "DATA"]);
     }
 
     #[test]
     fn test_parse_placeholders_dedupe() {
         let cmd = "echo {{SECRET}} {{SECRET}} {{OTHER}}";
-        let names = parse_placeholders(cmd).unwrap();
+        let names = parse_placeholders(cmd);
         assert_eq!(names, vec!["SECRET", "OTHER"]);
     }
 
     #[test]
     fn test_parse_placeholders_empty() {
         let cmd = "echo hello world";
-        let names = parse_placeholders(cmd).unwrap();
+        let names = parse_placeholders(cmd);
         assert!(names.is_empty());
     }
 

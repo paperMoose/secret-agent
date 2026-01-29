@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-pub fn export(file: &str, names: &[String], all: bool) -> Result<()> {
+pub fn export(file: &str, names: &[String], all: bool, quiet: bool) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
 
     let secrets_to_export: Vec<String> = if all {
@@ -13,7 +13,9 @@ pub fn export(file: &str, names: &[String], all: bool) -> Result<()> {
     };
 
     if secrets_to_export.is_empty() {
-        println!("No secrets to export.");
+        if !quiet {
+            println!("No secrets to export.");
+        }
         return Ok(());
     }
 
@@ -30,15 +32,17 @@ pub fn export(file: &str, names: &[String], all: bool) -> Result<()> {
     let content = lines.join("\n") + "\n";
     fs::write(path, content).with_context(|| format!("failed to write file: {}", path.display()))?;
 
-    println!(
-        "Exported {} secrets to {}",
-        secrets_to_export.len(),
-        file
-    );
+    if !quiet {
+        println!(
+            "Exported {} secrets to {}",
+            secrets_to_export.len(),
+            file
+        );
+    }
     Ok(())
 }
 
-pub fn import(file: &str) -> Result<()> {
+pub fn import(file: &str, quiet: bool) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
 
     let content = fs::read_to_string(file)
@@ -70,18 +74,20 @@ pub fn import(file: &str) -> Result<()> {
         }
     }
 
-    if imported.is_empty() && skipped.is_empty() {
-        println!("No secrets found in {}", file);
-    } else {
-        if !imported.is_empty() {
-            println!("Imported {} secrets: {}", imported.len(), imported.join(", "));
-        }
-        if !skipped.is_empty() {
-            println!(
-                "Skipped {} existing secrets: {}",
-                skipped.len(),
-                skipped.join(", ")
-            );
+    if !quiet {
+        if imported.is_empty() && skipped.is_empty() {
+            println!("No secrets found in {}", file);
+        } else {
+            if !imported.is_empty() {
+                println!("Imported {} secrets: {}", imported.len(), imported.join(", "));
+            }
+            if !skipped.is_empty() {
+                println!(
+                    "Skipped {} existing secrets: {}",
+                    skipped.len(),
+                    skipped.join(", ")
+                );
+            }
         }
     }
 

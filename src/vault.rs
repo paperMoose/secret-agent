@@ -3,7 +3,10 @@ use crate::error::{Error, Result};
 use crate::keychain;
 use chrono::{DateTime, Utc};
 use rusqlite::{Connection, params};
+use secrecy::{ExposeSecret, SecretString};
 use std::path::PathBuf;
+
+const SCHEMA_VERSION: i64 = 1;
 
 pub struct Secret {
     pub name: String,
@@ -14,7 +17,7 @@ pub struct Secret {
 
 pub struct Vault {
     conn: Connection,
-    master_key: String,
+    master_key: SecretString, // Zeroized on drop
 }
 
 impl Vault {
@@ -49,22 +52,37 @@ impl Vault {
             ",
         )?;
 
+        // Check/set schema version
+        init_schema_version(&conn)?;
+
         // Get or create master key
-        let master_key = keychain::get_or_create_master_key()?;
+        let master_key = SecretString::from(keychain::get_or_create_master_key()?);
 
         Ok(Self { conn, master_key })
     }
 
     /// Create a new secret with the given value
     pub fn create(&self, name: &str, value: &str) -> Result<()> {
+        self.create_internal(name, value, false)
+    }
+
+    /// Create a new secret, optionally overwriting existing
+    pub fn create_or_update(&self, name: &str, value: &str) -> Result<()> {
+        self.create_internal(name, value, true)
+    }
+
+    fn create_internal(&self, name: &str, value: &str, force: bool) -> Result<()> {
         validate_name(name)?;
 
         // Check if secret already exists
         if self.exists(name)? {
+            if force {
+                return self.update(name, value);
+            }
             return Err(Error::SecretAlreadyExists(name.to_string()));
         }
 
-        let encrypted = crypto::encrypt(value.as_bytes(), &self.master_key)?;
+        let encrypted = crypto::encrypt(value.as_bytes(), self.master_key.expose_secret())?;
         let now = Utc::now().to_rfc3339();
 
         self.conn.execute(
@@ -89,7 +107,7 @@ impl Vault {
                 _ => Error::Database(e),
             })?;
 
-        let decrypted = crypto::decrypt(&encrypted, &self.master_key)?;
+        let decrypted = crypto::decrypt(&encrypted, self.master_key.expose_secret())?;
         String::from_utf8(decrypted).map_err(|e| Error::Decryption(e.to_string()))
     }
 
@@ -145,13 +163,12 @@ impl Vault {
     }
 
     /// Update an existing secret's value
-    #[allow(dead_code)]
     pub fn update(&self, name: &str, value: &str) -> Result<()> {
         if !self.exists(name)? {
             return Err(Error::SecretNotFound(name.to_string()));
         }
 
-        let encrypted = crypto::encrypt(value.as_bytes(), &self.master_key)?;
+        let encrypted = crypto::encrypt(value.as_bytes(), self.master_key.expose_secret())?;
         let now = Utc::now().to_rfc3339();
 
         self.conn.execute(
@@ -161,6 +178,36 @@ impl Vault {
 
         Ok(())
     }
+}
+
+fn init_schema_version(conn: &Connection) -> Result<()> {
+    let version: Option<i64> = conn
+        .query_row(
+            "SELECT CAST(value AS INTEGER) FROM metadata WHERE key = 'schema_version'",
+            [],
+            |row| row.get(0),
+        )
+        .ok();
+
+    match version {
+        None => {
+            // First run - set schema version
+            conn.execute(
+                "INSERT INTO metadata (key, value) VALUES ('schema_version', ?1)",
+                params![SCHEMA_VERSION.to_string()],
+            )?;
+        }
+        Some(v) if v < SCHEMA_VERSION => {
+            // Future: run migrations here
+            conn.execute(
+                "UPDATE metadata SET value = ?1 WHERE key = 'schema_version'",
+                params![SCHEMA_VERSION.to_string()],
+            )?;
+        }
+        _ => {}
+    }
+
+    Ok(())
 }
 
 fn get_vault_path() -> Result<PathBuf> {

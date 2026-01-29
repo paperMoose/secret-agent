@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-pub fn run(name: &str, file: &str, placeholder: Option<&str>, env_format: bool) -> Result<()> {
+pub fn run(name: &str, file: &str, placeholder: Option<&str>, env_format: bool, quiet: bool) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
     let value = vault.get(name).context("failed to get secret")?;
 
@@ -19,7 +19,9 @@ pub fn run(name: &str, file: &str, placeholder: Option<&str>, env_format: bool) 
         anyhow::bail!("either --placeholder or --env-format is required");
     }
 
-    println!("Injected {} into {}", name, file);
+    if !quiet {
+        println!("Injected {} into {}", name, file);
+    }
     Ok(())
 }
 
