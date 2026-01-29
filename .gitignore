@@ -1,0 +1,19 @@
+# Rust
+/target/
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local vault (never commit secrets!)
+.secret-agent/
+
+# Test artifacts
+*.tmp
