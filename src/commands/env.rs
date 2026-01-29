@@ -30,14 +30,11 @@ pub fn export(file: &str, names: &[String], all: bool, quiet: bool) -> Result<()
     }
 
     let content = lines.join("\n") + "\n";
-    fs::write(path, content).with_context(|| format!("failed to write file: {}", path.display()))?;
+    fs::write(path, content)
+        .with_context(|| format!("failed to write file: {}", path.display()))?;
 
     if !quiet {
-        println!(
-            "Exported {} secrets to {}",
-            secrets_to_export.len(),
-            file
-        );
+        println!("Exported {} secrets to {}", secrets_to_export.len(), file);
     }
     Ok(())
 }
@@ -45,8 +42,8 @@ pub fn export(file: &str, names: &[String], all: bool, quiet: bool) -> Result<()
 pub fn import(file: &str, quiet: bool) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
 
-    let content = fs::read_to_string(file)
-        .with_context(|| format!("failed to read file: {}", file))?;
+    let content =
+        fs::read_to_string(file).with_context(|| format!("failed to read file: {}", file))?;
 
     let mut imported = Vec::new();
     let mut skipped = Vec::new();
@@ -79,7 +76,11 @@ pub fn import(file: &str, quiet: bool) -> Result<()> {
             println!("No secrets found in {}", file);
         } else {
             if !imported.is_empty() {
-                println!("Imported {} secrets: {}", imported.len(), imported.join(", "));
+                println!(
+                    "Imported {} secrets: {}",
+                    imported.len(),
+                    imported.join(", ")
+                );
             }
             if !skipped.is_empty() {
                 println!(

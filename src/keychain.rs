@@ -141,10 +141,7 @@ fn store_in_file(key: &str) -> Result<()> {
         fs::write(&path, key)?;
     }
 
-    eprintln!(
-        "Created master key file at {} (chmod 600)",
-        path.display()
-    );
+    eprintln!("Created master key file at {} (chmod 600)", path.display());
 
     Ok(())
 }
@@ -169,8 +166,7 @@ fn prompt_for_passphrase() -> Result<String> {
     eprintln!("No keychain available. Please enter a passphrase for the vault:");
     eprintln!("(Tip: Set SECRET_AGENT_PASSPHRASE env var to skip this prompt)");
 
-    let passphrase = rpassword::prompt_password("Passphrase: ")
-        .map_err(|e| Error::Io(e))?;
+    let passphrase = rpassword::prompt_password("Passphrase: ").map_err(|e| Error::Io(e))?;
 
     if passphrase.is_empty() {
         return Err(Error::Keychain("passphrase cannot be empty".to_string()));
@@ -280,7 +276,10 @@ mod tests {
 
         let result = get_from_file_at(&key_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("insecure permissions"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("insecure permissions"));
     }
 
     #[test]

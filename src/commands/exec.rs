@@ -7,9 +7,8 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::process::Command;
 
-static PLACEHOLDER_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"\{\{(\w+)\}\}").expect("invalid placeholder regex")
-});
+static PLACEHOLDER_RE: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"\{\{(\w+)\}\}").expect("invalid placeholder regex"));
 
 pub fn run(command: &str) -> Result<i32> {
     let vault = Vault::open().context("failed to open vault")?;
@@ -25,14 +24,12 @@ pub fn run(command: &str) -> Result<i32> {
     // Fetch all required secrets
     let mut secrets = HashMap::new();
     for name in &placeholder_names {
-        let value = vault
-            .get(name)
-            .map_err(|e| match e {
-                Error::SecretNotFound(_) => {
-                    anyhow::anyhow!("secret '{}' not found in vault", name)
-                }
-                _ => anyhow::anyhow!("failed to get secret '{}': {}", name, e),
-            })?;
+        let value = vault.get(name).map_err(|e| match e {
+            Error::SecretNotFound(_) => {
+                anyhow::anyhow!("secret '{}' not found in vault", name)
+            }
+            _ => anyhow::anyhow!("failed to get secret '{}': {}", name, e),
+        })?;
         secrets.insert(name.clone(), value);
     }
 

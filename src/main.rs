@@ -33,15 +33,13 @@ fn main() {
             unsafe_display,
         } => commands::get::run(&name, unsafe_display),
 
-        Commands::Exec { command } => {
-            match commands::exec::run(&command) {
-                Ok(exit_code) => std::process::exit(exit_code),
-                Err(e) => {
-                    eprintln!("Error: {:#}", e);
-                    std::process::exit(1);
-                }
+        Commands::Exec { command } => match commands::exec::run(&command) {
+            Ok(exit_code) => std::process::exit(exit_code),
+            Err(e) => {
+                eprintln!("Error: {:#}", e);
+                std::process::exit(1);
             }
-        }
+        },
 
         Commands::Inject {
             name,

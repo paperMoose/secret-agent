@@ -24,14 +24,15 @@ pub fn encrypt(plaintext: &[u8], passphrase: &str) -> Result<Vec<u8>> {
 
 /// Decrypt ciphertext using age with a passphrase (scrypt-based)
 pub fn decrypt(ciphertext: &[u8], passphrase: &str) -> Result<Vec<u8>> {
-    let decryptor = age::Decryptor::new(ciphertext)
-        .map_err(|e| Error::Decryption(e.to_string()))?;
+    let decryptor =
+        age::Decryptor::new(ciphertext).map_err(|e| Error::Decryption(e.to_string()))?;
 
     let mut decrypted = vec![];
     let mut reader = decryptor
-        .decrypt(std::iter::once(&age::scrypt::Identity::new(
-            SecretString::from(passphrase.to_owned()),
-        ) as &dyn age::Identity))
+        .decrypt(std::iter::once(
+            &age::scrypt::Identity::new(SecretString::from(passphrase.to_owned()))
+                as &dyn age::Identity,
+        ))
         .map_err(|e| Error::Decryption(e.to_string()))?;
 
     reader

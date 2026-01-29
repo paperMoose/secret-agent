@@ -3,7 +3,13 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
 
-pub fn run(name: &str, file: &str, placeholder: Option<&str>, env_format: bool, quiet: bool) -> Result<()> {
+pub fn run(
+    name: &str,
+    file: &str,
+    placeholder: Option<&str>,
+    env_format: bool,
+    quiet: bool,
+) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
     let value = vault.get(name).context("failed to get secret")?;
 
@@ -111,8 +117,8 @@ fn quote_env_value(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tempfile::NamedTempFile;
     use std::io::Write;
+    use tempfile::NamedTempFile;
 
     #[test]
     fn test_inject_placeholder() {

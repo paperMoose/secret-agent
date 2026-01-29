@@ -26,8 +26,7 @@ pub fn run(name: &str, clipboard: bool, quiet: bool) -> Result<()> {
 }
 
 fn read_from_clipboard() -> Result<String> {
-    let mut clipboard = arboard::Clipboard::new()
-        .context("failed to access clipboard")?;
+    let mut clipboard = arboard::Clipboard::new().context("failed to access clipboard")?;
 
     let value = clipboard
         .get_text()
@@ -61,6 +60,9 @@ fn read_secret_value() -> Result<String> {
             .context("failed to read from stdin")?;
 
         // Trim trailing newline
-        Ok(value.trim_end_matches('\n').trim_end_matches('\r').to_string())
+        Ok(value
+            .trim_end_matches('\n')
+            .trim_end_matches('\r')
+            .to_string())
     }
 }

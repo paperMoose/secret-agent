@@ -2,7 +2,7 @@ use crate::crypto;
 use crate::error::{Error, Result};
 use crate::keychain;
 use chrono::{DateTime, Utc};
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use secrecy::{ExposeSecret, SecretString};
 use std::path::PathBuf;
 

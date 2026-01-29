@@ -28,7 +28,10 @@ pub fn sanitize(output: &str, secrets: &HashMap<String, String>) -> String {
         // URL encoded
         let url_encoded = urlencoding::encode(value);
         if url_encoded != value.as_str() {
-            result = result.replace(url_encoded.as_ref(), &format!("[REDACTED:{}:urlencoded]", name));
+            result = result.replace(
+                url_encoded.as_ref(),
+                &format!("[REDACTED:{}:urlencoded]", name),
+            );
         }
     }
 
@@ -63,10 +66,7 @@ mod tests {
     fn test_sanitize_multiple_occurrences() {
         let output = "key=sk-12345, again: sk-12345";
         let result = sanitize(output, &secrets());
-        assert_eq!(
-            result,
-            "key=[REDACTED:API_KEY], again: [REDACTED:API_KEY]"
-        );
+        assert_eq!(result, "key=[REDACTED:API_KEY], again: [REDACTED:API_KEY]");
     }
 
     #[test]
