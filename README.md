@@ -1,5 +1,9 @@
 # secret-agent
 
+[![Crates.io](https://img.shields.io/crates/v/secret-agent.svg)](https://crates.io/crates/secret-agent)
+[![CI](https://github.com/paperMoose/secret-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/paperMoose/secret-agent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A CLI vault that keeps secrets out of AI agent traces.
 
 ## The Problem
