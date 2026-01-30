@@ -53,7 +53,15 @@ fn main() {
             file,
             placeholder,
             env_format,
-        } => commands::inject::run(&name, &file, placeholder.as_deref(), env_format, quiet),
+            export,
+        } => commands::inject::run(
+            &name,
+            &file,
+            placeholder.as_deref(),
+            env_format,
+            export,
+            quiet,
+        ),
 
         Commands::Env { action } => match action {
             EnvAction::Export { file, names, all } => {

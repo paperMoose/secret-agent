@@ -47,7 +47,11 @@ echo "new_value" | secret-agent import EXISTING_KEY --replace
 
 ### Write secrets to files
 ```bash
+# Append NAME=value to .env file
 secret-agent inject DB_PASS --file .env --env-format
+
+# Append export NAME="value" for shell scripts
+secret-agent inject DB_PASS --file env.sh --env-format --export
 ```
 
 ## Avoiding Keychain Prompts

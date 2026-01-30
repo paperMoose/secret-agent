@@ -8,6 +8,7 @@ pub fn run(
     file: &str,
     placeholder: Option<&str>,
     env_format: bool,
+    export: bool,
     quiet: bool,
 ) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
@@ -17,7 +18,7 @@ pub fn run(
 
     if env_format {
         // Append or update NAME=value line
-        inject_env_format(path, name, &value)?;
+        inject_env_format(path, name, &value, export)?;
     } else if let Some(placeholder) = placeholder {
         // Replace placeholder in file
         inject_placeholder(path, placeholder, &value)?;
@@ -51,7 +52,7 @@ fn inject_placeholder(path: &Path, placeholder: &str, value: &str) -> Result<()>
     Ok(())
 }
 
-fn inject_env_format(path: &Path, name: &str, value: &str) -> Result<()> {
+fn inject_env_format(path: &Path, name: &str, value: &str, export: bool) -> Result<()> {
     let mut content = if path.exists() {
         fs::read_to_string(path)
             .with_context(|| format!("failed to read file: {}", path.display()))?
@@ -59,15 +60,21 @@ fn inject_env_format(path: &Path, name: &str, value: &str) -> Result<()> {
         String::new()
     };
 
+    // Build the line format
+    let prefix = if export { "export " } else { "" };
+    let quoted_value = quote_env_value(value);
+    let new_line = format!("{}{}={}", prefix, name, quoted_value);
+
     // Check if the variable already exists
     let var_pattern = format!("{}=", name);
+    let export_pattern = format!("export {}=", name);
     let mut found = false;
     let mut new_lines: Vec<String> = Vec::new();
 
     for line in content.lines() {
-        if line.starts_with(&var_pattern) || line.starts_with(&format!("export {}=", name)) {
+        if line.starts_with(&var_pattern) || line.starts_with(&export_pattern) {
             // Replace existing line
-            new_lines.push(format!("{}={}", name, quote_env_value(value)));
+            new_lines.push(new_line.clone());
             found = true;
         } else {
             new_lines.push(line.to_string());
@@ -76,7 +83,7 @@ fn inject_env_format(path: &Path, name: &str, value: &str) -> Result<()> {
 
     if !found {
         // Append new line
-        new_lines.push(format!("{}={}", name, quote_env_value(value)));
+        new_lines.push(new_line);
     }
 
     content = new_lines.join("\n");
@@ -136,10 +143,21 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join(".env");
 
-        inject_env_format(&path, "API_KEY", "sk-12345").unwrap();
+        inject_env_format(&path, "API_KEY", "sk-12345", false).unwrap();
 
         let content = fs::read_to_string(&path).unwrap();
         assert_eq!(content, "API_KEY=sk-12345\n");
+    }
+
+    #[test]
+    fn test_inject_env_format_with_export() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("env.sh");
+
+        inject_env_format(&path, "API_KEY", "sk-12345", true).unwrap();
+
+        let content = fs::read_to_string(&path).unwrap();
+        assert_eq!(content, "export API_KEY=sk-12345\n");
     }
 
     #[test]
@@ -148,7 +166,7 @@ mod tests {
         writeln!(file, "API_KEY=old-value").unwrap();
         writeln!(file, "OTHER=keep").unwrap();
 
-        inject_env_format(file.path(), "API_KEY", "new-value").unwrap();
+        inject_env_format(file.path(), "API_KEY", "new-value", false).unwrap();
 
         let content = fs::read_to_string(file.path()).unwrap();
         assert!(content.contains("API_KEY=new-value"));
@@ -161,7 +179,7 @@ mod tests {
         let mut file = NamedTempFile::new().unwrap();
         writeln!(file, "EXISTING=value").unwrap();
 
-        inject_env_format(file.path(), "NEW_KEY", "new-value").unwrap();
+        inject_env_format(file.path(), "NEW_KEY", "new-value", false).unwrap();
 
         let content = fs::read_to_string(file.path()).unwrap();
         assert!(content.contains("EXISTING=value"));

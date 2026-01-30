@@ -120,8 +120,9 @@ are replaced with [REDACTED:NAME] so they never leak to logs or agents.")]
 
     /// Write a secret into a file (replaces placeholder or appends)
     #[command(after_help = "Examples:
-  secret-agent inject API_KEY -f .env --env-format     Append API_KEY=value to .env
-  secret-agent inject KEY -f config.json -p __KEY__    Replace __KEY__ placeholder")]
+  secret-agent inject API_KEY -f .env --env-format            Append API_KEY=value
+  secret-agent inject API_KEY -f .env --env-format --export   Append export API_KEY=\"value\"
+  secret-agent inject KEY -f config.json -p __KEY__           Replace __KEY__ placeholder")]
     Inject {
         /// Name of the secret to inject
         name: String,
@@ -137,6 +138,10 @@ are replaced with [REDACTED:NAME] so they never leak to logs or agents.")]
         /// Append as NAME=value line (for .env files)
         #[arg(long)]
         env_format: bool,
+
+        /// Prefix with 'export ' (use with --env-format for shell scripts)
+        #[arg(long)]
+        export: bool,
     },
 
     /// Bulk import/export secrets to .env files
