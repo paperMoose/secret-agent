@@ -1,5 +1,6 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
+use serial_test::serial;
 use std::fs;
 use tempfile::TempDir;
 
@@ -16,6 +17,7 @@ fn setup_test_env() -> TempDir {
 }
 
 #[test]
+#[serial]
 fn test_exec_without_separator() {
     // exec should work without -- separator
     secret_agent()
@@ -26,6 +28,7 @@ fn test_exec_without_separator() {
 }
 
 #[test]
+#[serial]
 fn test_exec_with_env_flag_no_separator() {
     let _dir = setup_test_env();
 
@@ -56,6 +59,7 @@ fn test_exec_with_env_flag_no_separator() {
 }
 
 #[test]
+#[serial]
 fn test_import_replace_flag() {
     let _dir = setup_test_env();
 
@@ -88,6 +92,7 @@ fn test_import_replace_flag() {
 }
 
 #[test]
+#[serial]
 fn test_inject_env_format() {
     let _dir = setup_test_env();
     let temp_dir = TempDir::new().unwrap();
@@ -124,6 +129,7 @@ fn test_inject_env_format() {
 }
 
 #[test]
+#[serial]
 fn test_inject_env_format_with_export() {
     let _dir = setup_test_env();
     let temp_dir = TempDir::new().unwrap();
@@ -160,6 +166,7 @@ fn test_inject_env_format_with_export() {
 }
 
 #[test]
+#[serial]
 fn test_exec_sanitizes_output() {
     let _dir = setup_test_env();
 
@@ -190,6 +197,7 @@ fn test_exec_sanitizes_output() {
 }
 
 #[test]
+#[serial]
 fn test_exec_with_multiple_env_flags() {
     let _dir = setup_test_env();
 
@@ -230,6 +238,7 @@ fn test_exec_with_multiple_env_flags() {
 }
 
 #[test]
+#[serial]
 fn test_exec_with_env_rename() {
     let _dir = setup_test_env();
 
