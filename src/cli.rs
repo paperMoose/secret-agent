@@ -52,7 +52,8 @@ pub enum Commands {
     #[command(after_help = "Examples:
   secret-agent import API_KEY --clipboard    Read from clipboard (clears after)
   echo 'value' | secret-agent import KEY     Read from stdin
-  secret-agent import KEY                    Interactive prompt (hidden input)")]
+  secret-agent import KEY                    Interactive prompt (hidden input)
+  secret-agent import KEY --force            Overwrite existing secret")]
     Import {
         /// Name to store the secret under
         name: String,
@@ -60,6 +61,10 @@ pub enum Commands {
         /// Read secret from clipboard instead of stdin (clears clipboard after)
         #[arg(long)]
         clipboard: bool,
+
+        /// Overwrite if the secret already exists
+        #[arg(short, long)]
+        force: bool,
     },
 
     /// List all stored secret names (values are never shown)

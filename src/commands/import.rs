@@ -2,7 +2,7 @@ use crate::vault::Vault;
 use anyhow::{Context, Result};
 use std::io::{self, BufRead};
 
-pub fn run(name: &str, clipboard: bool, quiet: bool) -> Result<()> {
+pub fn run(name: &str, clipboard: bool, force: bool, quiet: bool) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
 
     let value = if clipboard {
@@ -15,9 +15,15 @@ pub fn run(name: &str, clipboard: bool, quiet: bool) -> Result<()> {
         anyhow::bail!("secret value cannot be empty");
     }
 
-    vault
-        .create(name, &value)
-        .context("failed to import secret")?;
+    if force {
+        vault
+            .create_or_update(name, &value)
+            .context("failed to import secret")?;
+    } else {
+        vault
+            .create(name, &value)
+            .context("failed to import secret")?;
+    }
 
     if !quiet {
         println!("Imported secret: {}", name);
