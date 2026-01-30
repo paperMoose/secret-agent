@@ -12,7 +12,7 @@ pub fn run() -> Result<()> {
     }
 
     // Print header
-    println!("{:<24} {}", "NAME", "CREATED");
+    println!("{:<24} CREATED", "NAME");
 
     for secret in secrets {
         let created = secret.created_at.format("%Y-%m-%d %H:%M:%S");

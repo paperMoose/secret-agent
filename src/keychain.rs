@@ -166,7 +166,7 @@ fn prompt_for_passphrase() -> Result<String> {
     eprintln!("No keychain available. Please enter a passphrase for the vault:");
     eprintln!("(Tip: Set SECRET_AGENT_PASSPHRASE env var to skip this prompt)");
 
-    let passphrase = rpassword::prompt_password("Passphrase: ").map_err(|e| Error::Io(e))?;
+    let passphrase = rpassword::prompt_password("Passphrase: ").map_err(Error::Io)?;
 
     if passphrase.is_empty() {
         return Err(Error::Keychain("passphrase cannot be empty".to_string()));
