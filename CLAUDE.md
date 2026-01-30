@@ -14,18 +14,18 @@ cargo test && cargo build --release
 ### Run commands with secrets as environment variables (preferred)
 ```bash
 # Inject secret as env var
-secret-agent exec --env GEMINI_API_KEY -- node script.mjs
+secret-agent exec --env GEMINI_API_KEY node script.mjs
 
 # Multiple secrets
-secret-agent exec --env API_KEY --env DB_PASS -- ./deploy.sh
+secret-agent exec -e API_KEY -e DB_PASS ./deploy.sh
 
 # Rename: vault secret → different env var name
-secret-agent exec --env MY_SECRET:OPENAI_API_KEY -- python app.py
+secret-agent exec --env MY_SECRET:OPENAI_API_KEY python app.py
 ```
 
-### Template secrets into command strings (legacy)
+### Template secrets into command strings
 ```bash
-secret-agent exec -- curl -H 'Authorization: Bearer {{API_KEY}}' https://api.example.com
+secret-agent exec curl -H 'Authorization: Bearer {{API_KEY}}' https://api.example.com
 ```
 
 ### Create new secrets

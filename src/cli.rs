@@ -92,15 +92,15 @@ Example:
     },
 
     /// Run a command with secrets injected as environment variables
+    #[command(trailing_var_arg = true)]
     #[command(after_help = "Secrets can be injected two ways:
 
 1. As environment variables (recommended):
-   secret-agent exec --env API_KEY -- node app.js
-   secret-agent exec -e KEY1 -e KEY2 -- ./script.sh
-   secret-agent exec --env VAULT_NAME:ENV_VAR -- cmd    # rename
+   secret-agent exec --env API_KEY node app.js
+   secret-agent exec -e KEY1 -e KEY2 ./script.sh
 
 2. As placeholders in the command string:
-   secret-agent exec -- curl -H 'Auth: {{API_KEY}}' https://...
+   secret-agent exec curl -H 'Auth: {{API_KEY}}' https://...
 
 Output is automatically sanitized - any secret values in stdout/stderr
 are replaced with [REDACTED:NAME] so they never leak to logs or agents.")]
@@ -114,7 +114,7 @@ are replaced with [REDACTED:NAME] so they never leak to logs or agents.")]
 
         /// The command and arguments to execute.
         /// Use {{SECRET_NAME}} to inject secrets directly into the command string.
-        #[arg(last = true, required = true)]
+        #[arg(trailing_var_arg = true, required = true)]
         command: Vec<String>,
     },
 
