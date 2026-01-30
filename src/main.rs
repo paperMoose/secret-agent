@@ -22,7 +22,7 @@ fn main() {
             force,
         } => commands::create::run(&name, length, &charset, force, quiet),
 
-        Commands::Import { name, clipboard, force } => commands::import::run(&name, clipboard, force, quiet),
+        Commands::Import { name, clipboard, replace } => commands::import::run(&name, clipboard, replace, quiet),
 
         Commands::List => commands::list::run(),
 

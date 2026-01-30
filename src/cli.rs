@@ -53,7 +53,7 @@ pub enum Commands {
   secret-agent import API_KEY --clipboard    Read from clipboard (clears after)
   echo 'value' | secret-agent import KEY     Read from stdin
   secret-agent import KEY                    Interactive prompt (hidden input)
-  secret-agent import KEY --force            Overwrite existing secret")]
+  secret-agent import KEY --replace          Replace existing secret")]
     Import {
         /// Name to store the secret under
         name: String,
@@ -62,9 +62,9 @@ pub enum Commands {
         #[arg(long)]
         clipboard: bool,
 
-        /// Overwrite if the secret already exists
+        /// Replace if the secret already exists
         #[arg(short, long)]
-        force: bool,
+        replace: bool,
     },
 
     /// List all stored secret names (values are never shown)
