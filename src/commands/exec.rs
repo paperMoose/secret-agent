@@ -10,34 +10,57 @@ use std::process::Command;
 static PLACEHOLDER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\{\{(\w+)\}\}").expect("invalid placeholder regex"));
 
-pub fn run(command: &str) -> Result<i32> {
+/// Parse an env spec like "SECRET_NAME" or "SECRET_NAME:ENV_VAR"
+fn parse_env_spec(spec: &str) -> (String, String) {
+    if let Some((secret, var)) = spec.split_once(':') {
+        (secret.to_string(), var.to_string())
+    } else {
+        (spec.to_string(), spec.to_string())
+    }
+}
+
+pub fn run(env_secrets: &[String], command_parts: &[String]) -> Result<i32> {
     let vault = Vault::open().context("failed to open vault")?;
 
-    // Parse placeholders from command
-    let placeholder_names = parse_placeholders(command);
+    // Build the command string
+    let command = command_parts.join(" ");
 
-    if placeholder_names.is_empty() {
-        // No secrets needed, just run the command
-        return execute_command(command, &HashMap::new());
-    }
+    // Collect secrets needed for --env flags
+    let mut env_vars: HashMap<String, String> = HashMap::new();
+    let mut all_secrets: HashMap<String, String> = HashMap::new();
 
-    // Fetch all required secrets
-    let mut secrets = HashMap::new();
-    for name in &placeholder_names {
-        let value = vault.get(name).map_err(|e| match e {
+    for spec in env_secrets {
+        let (secret_name, env_var_name) = parse_env_spec(spec);
+        let value = vault.get(&secret_name).map_err(|e| match e {
             Error::SecretNotFound(_) => {
-                anyhow::anyhow!("secret '{}' not found in vault", name)
+                anyhow::anyhow!("secret '{}' not found in vault", secret_name)
             }
-            _ => anyhow::anyhow!("failed to get secret '{}': {}", name, e),
+            _ => anyhow::anyhow!("failed to get secret '{}': {}", secret_name, e),
         })?;
-        secrets.insert(name.clone(), value);
+        env_vars.insert(env_var_name, value.clone());
+        all_secrets.insert(secret_name, value);
     }
 
-    // Inject secrets into command
-    let injected_command = inject_secrets(command, &secrets);
+    // Parse placeholders from command (for backwards compatibility)
+    let placeholder_names = parse_placeholders(&command);
 
-    // Execute and return exit code
-    execute_command(&injected_command, &secrets)
+    for name in &placeholder_names {
+        if !all_secrets.contains_key(name) {
+            let value = vault.get(name).map_err(|e| match e {
+                Error::SecretNotFound(_) => {
+                    anyhow::anyhow!("secret '{}' not found in vault", name)
+                }
+                _ => anyhow::anyhow!("failed to get secret '{}': {}", name, e),
+            })?;
+            all_secrets.insert(name.clone(), value);
+        }
+    }
+
+    // Inject secrets into command string (for {{PLACEHOLDER}} syntax)
+    let injected_command = inject_secrets(&command, &all_secrets);
+
+    // Execute with env vars
+    execute_command(&injected_command, &env_vars, &all_secrets)
 }
 
 fn parse_placeholders(command: &str) -> Vec<String> {
@@ -67,21 +90,36 @@ fn inject_secrets(command: &str, secrets: &HashMap<String, String>) -> String {
     result
 }
 
-fn execute_command(command: &str, secrets: &HashMap<String, String>) -> Result<i32> {
-    let output = Command::new("sh")
-        .arg("-c")
-        .arg(command)
-        .output()
-        .context("failed to execute command")?;
+fn execute_command(
+    command: &str,
+    env_vars: &HashMap<String, String>,
+    secrets: &HashMap<String, String>,
+) -> Result<i32> {
+    let mut cmd = Command::new("sh");
+    cmd.arg("-c").arg(command);
+
+    // Inject environment variables
+    for (var_name, value) in env_vars {
+        cmd.env(var_name, value);
+    }
+
+    let output = cmd.output().context("failed to execute command")?;
+
+    // Combine all secret values for sanitization
+    let mut all_secret_values = secrets.clone();
+    for (var_name, value) in env_vars {
+        // Use var name as key for sanitization display
+        all_secret_values.insert(var_name.clone(), value.clone());
+    }
 
     // Sanitize and print stdout
-    let stdout = sanitize::sanitize_bytes(&output.stdout, secrets);
+    let stdout = sanitize::sanitize_bytes(&output.stdout, &all_secret_values);
     if !stdout.is_empty() {
         print!("{}", stdout);
     }
 
     // Sanitize and print stderr
-    let stderr = sanitize::sanitize_bytes(&output.stderr, secrets);
+    let stderr = sanitize::sanitize_bytes(&output.stderr, &all_secret_values);
     if !stderr.is_empty() {
         eprint!("{}", stderr);
     }
@@ -93,6 +131,20 @@ fn execute_command(command: &str, secrets: &HashMap<String, String>) -> Result<i
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_parse_env_spec_simple() {
+        let (secret, var) = parse_env_spec("API_KEY");
+        assert_eq!(secret, "API_KEY");
+        assert_eq!(var, "API_KEY");
+    }
+
+    #[test]
+    fn test_parse_env_spec_renamed() {
+        let (secret, var) = parse_env_spec("MY_SECRET:OPENAI_API_KEY");
+        assert_eq!(secret, "MY_SECRET");
+        assert_eq!(var, "OPENAI_API_KEY");
+    }
 
     #[test]
     fn test_parse_placeholders() {

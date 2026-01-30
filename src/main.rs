@@ -33,7 +33,7 @@ fn main() {
             unsafe_display,
         } => commands::get::run(&name, unsafe_display),
 
-        Commands::Exec { command } => match commands::exec::run(&command) {
+        Commands::Exec { env_secrets, command } => match commands::exec::run(&env_secrets, &command) {
             Ok(exit_code) => std::process::exit(exit_code),
             Err(e) => {
                 eprintln!("Error: {:#}", e);
