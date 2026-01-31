@@ -1,6 +1,6 @@
 [package]
 name = "secret-agent"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 description = "A CLI vault that keeps secrets out of AI agent traces"
 license = "MIT"
