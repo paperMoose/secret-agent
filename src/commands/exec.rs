@@ -25,11 +25,25 @@ fn parse_env_spec(spec: &str) -> (String, String) {
     }
 }
 
+/// Shell-quote an argument if it contains special characters
+fn shell_quote(s: &str) -> String {
+    // If the string is simple (alphanumeric, underscore, hyphen, dot, slash), use as-is
+    if s.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.' || c == '/') {
+        return s.to_string();
+    }
+    // Otherwise, wrap in single quotes, escaping any existing single quotes
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
 pub fn run(env_secrets: &[String], command_parts: &[String]) -> Result<i32> {
     let vault = Vault::open().context("failed to open vault")?;
 
-    // Build the command string
-    let command = command_parts.join(" ");
+    // Build the command string, properly quoting arguments that need it
+    let command = command_parts
+        .iter()
+        .map(|s| shell_quote(s))
+        .collect::<Vec<_>>()
+        .join(" ");
 
     // Collect secrets needed for --env flags
     let mut env_vars: HashMap<String, String> = HashMap::new();
@@ -197,5 +211,31 @@ mod tests {
         let result = inject_secrets(cmd, &secrets);
 
         assert_eq!(result, "curl https://example.com/api -H 'Auth: sk-12345'");
+    }
+
+    #[test]
+    fn test_shell_quote_simple() {
+        assert_eq!(shell_quote("hello"), "hello");
+        assert_eq!(shell_quote("file.txt"), "file.txt");
+        assert_eq!(shell_quote("/path/to/file"), "/path/to/file");
+        assert_eq!(shell_quote("my-name_123"), "my-name_123");
+    }
+
+    #[test]
+    fn test_shell_quote_special_chars() {
+        assert_eq!(shell_quote("hello world"), "'hello world'");
+        assert_eq!(shell_quote("echo \"test\""), "'echo \"test\"'");
+        assert_eq!(shell_quote("it's"), "'it'\\''s'");
+    }
+
+    #[test]
+    fn test_shell_quote_preserves_sh_c_args() {
+        // When user runs: secret-agent exec sh -c 'echo "{{KEY}}"'
+        // The shell passes: ["sh", "-c", "echo \"{{KEY}}\""]
+        // We need to reconstruct: sh -c 'echo "{{KEY}}"'
+        let parts = vec!["sh".to_string(), "-c".to_string(), "echo \"{{KEY}}\"".to_string()];
+        let quoted: Vec<String> = parts.iter().map(|s| shell_quote(s)).collect();
+        let command = quoted.join(" ");
+        assert_eq!(command, "sh -c 'echo \"{{KEY}}\"'");
     }
 }
