@@ -113,6 +113,26 @@ impl Vault {
 
     /// List all secrets (metadata only, no values)
     pub fn list(&self) -> Result<Vec<Secret>> {
+        self.list_by_bucket(None)
+    }
+
+    /// List secrets, optionally filtered by bucket
+    pub fn list_by_bucket(&self, bucket: Option<&str>) -> Result<Vec<Secret>> {
+        let all_secrets = self.list_all_internal()?;
+
+        match bucket {
+            Some(b) => {
+                let prefix = format!("{}/", b);
+                Ok(all_secrets
+                    .into_iter()
+                    .filter(|s| s.name.starts_with(&prefix))
+                    .collect())
+            }
+            None => Ok(all_secrets),
+        }
+    }
+
+    fn list_all_internal(&self) -> Result<Vec<Secret>> {
         let mut stmt = self
             .conn
             .prepare("SELECT name, created_at, updated_at FROM secrets ORDER BY name")?;
@@ -226,27 +246,69 @@ fn get_vault_path() -> Result<PathBuf> {
     Ok(home.join(".secret-agent").join("vault.db"))
 }
 
+/// Parse a secret name into (bucket, name) parts
+/// "prod/API_KEY" -> (Some("prod"), "API_KEY")
+/// "API_KEY" -> (None, "API_KEY")
+pub fn parse_bucket_name(full_name: &str) -> (Option<&str>, &str) {
+    if let Some(pos) = full_name.find('/') {
+        let bucket = &full_name[..pos];
+        let name = &full_name[pos + 1..];
+        (Some(bucket), name)
+    } else {
+        (None, full_name)
+    }
+}
+
+/// Get just the secret name without bucket prefix
+pub fn secret_name_only(full_name: &str) -> &str {
+    parse_bucket_name(full_name).1
+}
+
 fn validate_name(name: &str) -> Result<()> {
     if name.is_empty() {
         return Err(Error::InvalidSecretName("name cannot be empty".to_string()));
     }
 
+    // Check for bucket syntax: bucket/name
+    let (bucket, secret_name) = parse_bucket_name(name);
+
+    // Validate bucket if present
+    if let Some(b) = bucket {
+        validate_name_part(b, "bucket")?;
+    }
+
+    // Validate the secret name part
+    validate_name_part(secret_name, "name")?;
+
+    Ok(())
+}
+
+fn validate_name_part(part: &str, part_type: &str) -> Result<()> {
+    if part.is_empty() {
+        return Err(Error::InvalidSecretName(format!(
+            "{} cannot be empty",
+            part_type
+        )));
+    }
+
     // Only allow alphanumeric, underscores, and hyphens
-    if !name
+    if !part
         .chars()
         .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
     {
-        return Err(Error::InvalidSecretName(
-            "name can only contain alphanumeric characters, underscores, and hyphens".to_string(),
-        ));
+        return Err(Error::InvalidSecretName(format!(
+            "{} can only contain alphanumeric characters, underscores, and hyphens",
+            part_type
+        )));
     }
 
     // Must start with a letter or underscore
-    if let Some(first) = name.chars().next() {
+    if let Some(first) = part.chars().next() {
         if !first.is_alphabetic() && first != '_' {
-            return Err(Error::InvalidSecretName(
-                "name must start with a letter or underscore".to_string(),
-            ));
+            return Err(Error::InvalidSecretName(format!(
+                "{} must start with a letter or underscore",
+                part_type
+            )));
         }
     }
 
@@ -329,5 +391,64 @@ mod tests {
         assert!(validate_name("").is_err());
         assert!(validate_name("123invalid").is_err());
         assert!(validate_name("has spaces").is_err());
+    }
+
+    #[test]
+    fn test_validate_name_with_bucket() {
+        assert!(validate_name("prod/API_KEY").is_ok());
+        assert!(validate_name("dev/DB_PASS").is_ok());
+        assert!(validate_name("staging/TOKEN").is_ok());
+        assert!(validate_name("/API_KEY").is_err()); // empty bucket
+        assert!(validate_name("prod/").is_err()); // empty name
+        assert!(validate_name("123bucket/KEY").is_err()); // bucket starts with number
+        assert!(validate_name("prod/123KEY").is_err()); // name starts with number
+    }
+
+    #[test]
+    fn test_parse_bucket_name() {
+        assert_eq!(parse_bucket_name("prod/API_KEY"), (Some("prod"), "API_KEY"));
+        assert_eq!(parse_bucket_name("API_KEY"), (None, "API_KEY"));
+        assert_eq!(parse_bucket_name("a/b/c"), (Some("a"), "b/c")); // only first slash
+    }
+
+    #[test]
+    fn test_secret_name_only() {
+        assert_eq!(secret_name_only("prod/API_KEY"), "API_KEY");
+        assert_eq!(secret_name_only("API_KEY"), "API_KEY");
+    }
+
+    #[test]
+    fn test_create_with_bucket() {
+        let (vault, _temp) = setup_test_vault();
+
+        vault.create("prod/API_KEY", "prod-value").unwrap();
+        vault.create("dev/API_KEY", "dev-value").unwrap();
+
+        assert_eq!(vault.get("prod/API_KEY").unwrap(), "prod-value");
+        assert_eq!(vault.get("dev/API_KEY").unwrap(), "dev-value");
+    }
+
+    #[test]
+    fn test_list_by_bucket() {
+        let (vault, _temp) = setup_test_vault();
+
+        vault.create("prod/KEY1", "v1").unwrap();
+        vault.create("prod/KEY2", "v2").unwrap();
+        vault.create("dev/KEY1", "v3").unwrap();
+        vault.create("GLOBAL", "v4").unwrap();
+
+        // List all
+        let all = vault.list().unwrap();
+        assert_eq!(all.len(), 4);
+
+        // List only prod
+        let prod = vault.list_by_bucket(Some("prod")).unwrap();
+        assert_eq!(prod.len(), 2);
+        assert!(prod.iter().all(|s| s.name.starts_with("prod/")));
+
+        // List only dev
+        let dev = vault.list_by_bucket(Some("dev")).unwrap();
+        assert_eq!(dev.len(), 1);
+        assert_eq!(dev[0].name, "dev/KEY1");
     }
 }

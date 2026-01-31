@@ -68,7 +68,14 @@ pub enum Commands {
     },
 
     /// List all stored secret names (values are never shown)
-    List,
+    #[command(after_help = "Examples:
+  secret-agent list                  List all secrets
+  secret-agent list --bucket prod    List only secrets in 'prod' bucket")]
+    List {
+        /// Filter by bucket name (e.g., 'prod', 'dev')
+        #[arg(short, long)]
+        bucket: Option<String>,
+    },
 
     /// Permanently delete a secret from the vault
     Delete {

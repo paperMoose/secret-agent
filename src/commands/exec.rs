@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::sanitize;
-use crate::vault::Vault;
+use crate::vault::{secret_name_only, Vault};
 use anyhow::{Context, Result};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -10,12 +10,18 @@ use std::process::Command;
 static PLACEHOLDER_RE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\{\{(\w+)\}\}").expect("invalid placeholder regex"));
 
-/// Parse an env spec like "SECRET_NAME" or "SECRET_NAME:ENV_VAR"
+/// Parse an env spec like "SECRET_NAME", "bucket/SECRET_NAME", or "bucket/SECRET_NAME:ENV_VAR"
+/// Returns (secret_path, env_var_name)
+/// - "API_KEY" -> ("API_KEY", "API_KEY")
+/// - "prod/API_KEY" -> ("prod/API_KEY", "API_KEY")
+/// - "prod/API_KEY:MY_VAR" -> ("prod/API_KEY", "MY_VAR")
 fn parse_env_spec(spec: &str) -> (String, String) {
     if let Some((secret, var)) = spec.split_once(':') {
         (secret.to_string(), var.to_string())
     } else {
-        (spec.to_string(), spec.to_string())
+        // Use just the secret name (without bucket) as the env var name
+        let env_var = secret_name_only(spec).to_string();
+        (spec.to_string(), env_var)
     }
 }
 
@@ -144,6 +150,20 @@ mod tests {
         let (secret, var) = parse_env_spec("MY_SECRET:OPENAI_API_KEY");
         assert_eq!(secret, "MY_SECRET");
         assert_eq!(var, "OPENAI_API_KEY");
+    }
+
+    #[test]
+    fn test_parse_env_spec_with_bucket() {
+        let (secret, var) = parse_env_spec("prod/API_KEY");
+        assert_eq!(secret, "prod/API_KEY");
+        assert_eq!(var, "API_KEY"); // env var is just the name, not bucket/name
+    }
+
+    #[test]
+    fn test_parse_env_spec_with_bucket_renamed() {
+        let (secret, var) = parse_env_spec("prod/SECRET:MY_VAR");
+        assert_eq!(secret, "prod/SECRET");
+        assert_eq!(var, "MY_VAR");
     }
 
     #[test]

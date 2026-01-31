@@ -28,7 +28,7 @@ fn main() {
             replace,
         } => commands::import::run(&name, clipboard, replace, quiet),
 
-        Commands::List => commands::list::run(),
+        Commands::List { bucket } => commands::list::run(bucket.as_deref()),
 
         Commands::Delete { name } => commands::delete::run(&name, quiet),
 

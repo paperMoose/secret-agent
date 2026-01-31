@@ -1,4 +1,4 @@
-use crate::vault::Vault;
+use crate::vault::{secret_name_only, Vault};
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
@@ -16,9 +16,12 @@ pub fn run(
 
     let path = Path::new(file);
 
+    // Use just the secret name (without bucket) for env var name
+    let env_var_name = secret_name_only(name);
+
     if env_format {
         // Append or update NAME=value line
-        inject_env_format(path, name, &value, export)?;
+        inject_env_format(path, env_var_name, &value, export)?;
     } else if let Some(placeholder) = placeholder {
         // Replace placeholder in file
         inject_placeholder(path, placeholder, &value)?;

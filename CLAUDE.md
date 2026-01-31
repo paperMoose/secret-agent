@@ -11,10 +11,27 @@ cargo test && cargo build --release
 
 ## Usage for AI Agents
 
+### Buckets for organizing secrets
+```bash
+# Create secrets in buckets (bucket/name syntax)
+secret-agent create prod/SUPABASE_KEY
+secret-agent create dev/SUPABASE_KEY
+secret-agent create staging/SUPABASE_KEY
+
+# List all secrets
+secret-agent list
+
+# List only secrets in a bucket
+secret-agent list --bucket prod
+```
+
 ### Run commands with secrets as environment variables (preferred)
 ```bash
 # Inject secret as env var
 secret-agent exec --env GEMINI_API_KEY node script.mjs
+
+# With bucket - env var is just the name (API_KEY, not prod/API_KEY)
+secret-agent exec --env prod/API_KEY node script.mjs
 
 # Multiple secrets
 secret-agent exec -e API_KEY -e DB_PASS ./deploy.sh
