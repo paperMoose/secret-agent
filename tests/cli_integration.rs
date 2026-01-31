@@ -268,3 +268,210 @@ fn test_exec_with_env_rename() {
         .assert()
         .success();
 }
+
+#[test]
+#[serial]
+fn test_exec_template_syntax_with_sh_c() {
+    let _dir = setup_test_env();
+
+    // Import a secret with known value
+    secret_agent()
+        .args(["import", "TEST_SH_C_KEY"])
+        .write_stdin("test-secret-value-12345\n")
+        .assert()
+        .success();
+
+    // The critical test: template syntax with sh -c should work
+    // This was broken before the fix - it would output empty
+    secret_agent()
+        .args(["exec", "sh", "-c", "echo \"{{TEST_SH_C_KEY}}\""])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[REDACTED:TEST_SH_C_KEY]"));
+
+    // Cleanup
+    secret_agent()
+        .args(["delete", "TEST_SH_C_KEY"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[serial]
+fn test_exec_template_syntax_with_pipe() {
+    let _dir = setup_test_env();
+
+    // Import a secret with known value
+    secret_agent()
+        .args(["import", "TEST_PIPE_KEY"])
+        .write_stdin("pipe-test-value\n")
+        .assert()
+        .success();
+
+    // Template syntax with pipes in sh -c
+    secret_agent()
+        .args(["exec", "sh", "-c", "echo \"{{TEST_PIPE_KEY}}\" | cat"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[REDACTED:TEST_PIPE_KEY]"));
+
+    // Cleanup
+    secret_agent()
+        .args(["delete", "TEST_PIPE_KEY"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[serial]
+fn test_exec_template_syntax_simple_echo() {
+    let _dir = setup_test_env();
+
+    // Import a secret
+    secret_agent()
+        .args(["import", "TEST_ECHO_KEY"])
+        .write_stdin("echo-value-xyz\n")
+        .assert()
+        .success();
+
+    // Simple template without sh -c should also work
+    secret_agent()
+        .args(["exec", "echo", "{{TEST_ECHO_KEY}}"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[REDACTED:TEST_ECHO_KEY]"));
+
+    // Cleanup
+    secret_agent()
+        .args(["delete", "TEST_ECHO_KEY"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[serial]
+fn test_exec_template_with_multiple_placeholders() {
+    let _dir = setup_test_env();
+
+    // Import secrets
+    secret_agent()
+        .args(["import", "TEST_MULTI_A"])
+        .write_stdin("value-a\n")
+        .assert()
+        .success();
+    secret_agent()
+        .args(["import", "TEST_MULTI_B"])
+        .write_stdin("value-b\n")
+        .assert()
+        .success();
+
+    // Multiple placeholders in sh -c
+    secret_agent()
+        .args(["exec", "sh", "-c", "echo \"{{TEST_MULTI_A}} and {{TEST_MULTI_B}}\""])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[REDACTED:TEST_MULTI_A]"))
+        .stdout(predicate::str::contains("[REDACTED:TEST_MULTI_B]"));
+
+    // Cleanup
+    secret_agent()
+        .args(["delete", "TEST_MULTI_A"])
+        .assert()
+        .success();
+    secret_agent()
+        .args(["delete", "TEST_MULTI_B"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[serial]
+fn test_exec_combined_env_and_template() {
+    let _dir = setup_test_env();
+
+    // Import secrets
+    secret_agent()
+        .args(["import", "TEST_ENV_VAR"])
+        .write_stdin("env-value\n")
+        .assert()
+        .success();
+    secret_agent()
+        .args(["import", "TEST_TEMPLATE_VAR"])
+        .write_stdin("template-value\n")
+        .assert()
+        .success();
+
+    // Use both --env flag and template syntax together
+    secret_agent()
+        .args([
+            "exec",
+            "--env", "TEST_ENV_VAR",
+            "sh", "-c", "echo $TEST_ENV_VAR and {{TEST_TEMPLATE_VAR}}"
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[REDACTED:TEST_ENV_VAR]"))
+        .stdout(predicate::str::contains("[REDACTED:TEST_TEMPLATE_VAR]"));
+
+    // Cleanup
+    secret_agent()
+        .args(["delete", "TEST_ENV_VAR"])
+        .assert()
+        .success();
+    secret_agent()
+        .args(["delete", "TEST_TEMPLATE_VAR"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[serial]
+fn test_exec_template_with_json_data() {
+    let _dir = setup_test_env();
+
+    // Import a secret
+    secret_agent()
+        .args(["import", "TEST_JSON_KEY"])
+        .write_stdin("secret-token-abc\n")
+        .assert()
+        .success();
+
+    // JSON data with template - simulates curl -d '{"token": "{{KEY}}"}'
+    secret_agent()
+        .args(["exec", "sh", "-c", "echo '{\"token\": \"{{TEST_JSON_KEY}}\"}'"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[REDACTED:TEST_JSON_KEY]"));
+
+    // Cleanup
+    secret_agent()
+        .args(["delete", "TEST_JSON_KEY"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[serial]
+fn test_exec_template_preserves_exit_code() {
+    let _dir = setup_test_env();
+
+    // Import a secret
+    secret_agent()
+        .args(["import", "TEST_EXIT_KEY"])
+        .write_stdin("some-value\n")
+        .assert()
+        .success();
+
+    // Command that exits with non-zero should propagate
+    secret_agent()
+        .args(["exec", "sh", "-c", "echo {{TEST_EXIT_KEY}} && exit 42"])
+        .assert()
+        .code(42)
+        .stdout(predicate::str::contains("[REDACTED:TEST_EXIT_KEY]"));
+
+    // Cleanup
+    secret_agent()
+        .args(["delete", "TEST_EXIT_KEY"])
+        .assert()
+        .success();
+}
