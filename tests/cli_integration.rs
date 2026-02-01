@@ -367,7 +367,12 @@ fn test_exec_template_with_multiple_placeholders() {
 
     // Multiple placeholders in sh -c
     secret_agent()
-        .args(["exec", "sh", "-c", "echo \"{{TEST_MULTI_A}} and {{TEST_MULTI_B}}\""])
+        .args([
+            "exec",
+            "sh",
+            "-c",
+            "echo \"{{TEST_MULTI_A}} and {{TEST_MULTI_B}}\"",
+        ])
         .assert()
         .success()
         .stdout(predicate::str::contains("[REDACTED:TEST_MULTI_A]"))
@@ -405,8 +410,11 @@ fn test_exec_combined_env_and_template() {
     secret_agent()
         .args([
             "exec",
-            "--env", "TEST_ENV_VAR",
-            "sh", "-c", "echo $TEST_ENV_VAR and {{TEST_TEMPLATE_VAR}}"
+            "--env",
+            "TEST_ENV_VAR",
+            "sh",
+            "-c",
+            "echo $TEST_ENV_VAR and {{TEST_TEMPLATE_VAR}}",
         ])
         .assert()
         .success()
@@ -438,7 +446,12 @@ fn test_exec_template_with_json_data() {
 
     // JSON data with template - simulates curl -d '{"token": "{{KEY}}"}'
     secret_agent()
-        .args(["exec", "sh", "-c", "echo '{\"token\": \"{{TEST_JSON_KEY}}\"}'"])
+        .args([
+            "exec",
+            "sh",
+            "-c",
+            "echo '{\"token\": \"{{TEST_JSON_KEY}}\"}'",
+        ])
         .assert()
         .success()
         .stdout(predicate::str::contains("[REDACTED:TEST_JSON_KEY]"));

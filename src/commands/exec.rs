@@ -33,7 +33,9 @@ fn shell_quote(s: &str) -> String {
     }
     // If the string is simple (alphanumeric, underscore, hyphen, dot, slash, colon), use as-is
     // Colon is safe in shell arguments (used in URLs, paths, etc.)
-    if s.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.' || c == '/' || c == ':') {
+    if s.chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-' || c == '.' || c == '/' || c == ':')
+    {
         return s.to_string();
     }
     // Otherwise, wrap in single quotes, escaping any existing single quotes
@@ -238,7 +240,11 @@ mod tests {
         // When user runs: secret-agent exec sh -c 'echo "{{KEY}}"'
         // The shell passes: ["sh", "-c", "echo \"{{KEY}}\""]
         // We need to reconstruct: sh -c 'echo "{{KEY}}"'
-        let parts = vec!["sh".to_string(), "-c".to_string(), "echo \"{{KEY}}\"".to_string()];
+        let parts = vec![
+            "sh".to_string(),
+            "-c".to_string(),
+            "echo \"{{KEY}}\"".to_string(),
+        ];
         let quoted: Vec<String> = parts.iter().map(|s| shell_quote(s)).collect();
         let command = quoted.join(" ");
         assert_eq!(command, "sh -c 'echo \"{{KEY}}\"'");
@@ -287,14 +293,27 @@ mod tests {
     #[test]
     fn test_command_reconstruction_simple() {
         let parts = vec!["echo".to_string(), "hello".to_string()];
-        let command: String = parts.iter().map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ");
+        let command: String = parts
+            .iter()
+            .map(|s| shell_quote(s))
+            .collect::<Vec<_>>()
+            .join(" ");
         assert_eq!(command, "echo hello");
     }
 
     #[test]
     fn test_command_reconstruction_with_flags() {
-        let parts = vec!["curl".to_string(), "-X".to_string(), "POST".to_string(), "https://api.example.com".to_string()];
-        let command: String = parts.iter().map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ");
+        let parts = vec![
+            "curl".to_string(),
+            "-X".to_string(),
+            "POST".to_string(),
+            "https://api.example.com".to_string(),
+        ];
+        let command: String = parts
+            .iter()
+            .map(|s| shell_quote(s))
+            .collect::<Vec<_>>()
+            .join(" ");
         assert_eq!(command, "curl -X POST https://api.example.com");
     }
 
@@ -302,8 +321,16 @@ mod tests {
     fn test_command_reconstruction_with_json() {
         // When user runs: secret-agent exec curl -d '{"key": "value"}'
         // Shell passes: ["curl", "-d", "{\"key\": \"value\"}"]
-        let parts = vec!["curl".to_string(), "-d".to_string(), "{\"key\": \"value\"}".to_string()];
-        let command: String = parts.iter().map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ");
+        let parts = vec![
+            "curl".to_string(),
+            "-d".to_string(),
+            "{\"key\": \"value\"}".to_string(),
+        ];
+        let command: String = parts
+            .iter()
+            .map(|s| shell_quote(s))
+            .collect::<Vec<_>>()
+            .join(" ");
         assert_eq!(command, "curl -d '{\"key\": \"value\"}'");
     }
 
@@ -317,23 +344,46 @@ mod tests {
             "-c".to_string(),
             "echo \"{{KEY}}\" | vercel env add KEY production".to_string(),
         ];
-        let command: String = parts.iter().map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ");
-        assert_eq!(command, "sh -c 'echo \"{{KEY}}\" | vercel env add KEY production'");
+        let command: String = parts
+            .iter()
+            .map(|s| shell_quote(s))
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert_eq!(
+            command,
+            "sh -c 'echo \"{{KEY}}\" | vercel env add KEY production'"
+        );
     }
 
     #[test]
     fn test_parse_placeholders_in_quoted_command() {
         // After shell_quote, placeholders should still be findable
-        let parts = vec!["sh".to_string(), "-c".to_string(), "echo \"{{API_KEY}}\"".to_string()];
-        let command: String = parts.iter().map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ");
+        let parts = vec![
+            "sh".to_string(),
+            "-c".to_string(),
+            "echo \"{{API_KEY}}\"".to_string(),
+        ];
+        let command: String = parts
+            .iter()
+            .map(|s| shell_quote(s))
+            .collect::<Vec<_>>()
+            .join(" ");
         let placeholders = parse_placeholders(&command);
         assert_eq!(placeholders, vec!["API_KEY"]);
     }
 
     #[test]
     fn test_inject_secrets_in_quoted_command() {
-        let parts = vec!["sh".to_string(), "-c".to_string(), "echo \"{{API_KEY}}\"".to_string()];
-        let command: String = parts.iter().map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ");
+        let parts = vec![
+            "sh".to_string(),
+            "-c".to_string(),
+            "echo \"{{API_KEY}}\"".to_string(),
+        ];
+        let command: String = parts
+            .iter()
+            .map(|s| shell_quote(s))
+            .collect::<Vec<_>>()
+            .join(" ");
 
         let mut secrets = HashMap::new();
         secrets.insert("API_KEY".to_string(), "sk-secret-123".to_string());
@@ -345,10 +395,18 @@ mod tests {
     #[test]
     fn test_full_pipeline_sh_c_echo() {
         // Simulate the full pipeline for: secret-agent exec sh -c 'echo "{{KEY}}"'
-        let command_parts = vec!["sh".to_string(), "-c".to_string(), "echo \"{{KEY}}\"".to_string()];
+        let command_parts = vec![
+            "sh".to_string(),
+            "-c".to_string(),
+            "echo \"{{KEY}}\"".to_string(),
+        ];
 
         // Step 1: Build command with proper quoting
-        let command: String = command_parts.iter().map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ");
+        let command: String = command_parts
+            .iter()
+            .map(|s| shell_quote(s))
+            .collect::<Vec<_>>()
+            .join(" ");
         assert_eq!(command, "sh -c 'echo \"{{KEY}}\"'");
 
         // Step 2: Parse placeholders
@@ -371,7 +429,11 @@ mod tests {
             "curl -H \"Auth: {{TOKEN}}\" https://api.com | jq .data".to_string(),
         ];
 
-        let command: String = command_parts.iter().map(|s| shell_quote(s)).collect::<Vec<_>>().join(" ");
+        let command: String = command_parts
+            .iter()
+            .map(|s| shell_quote(s))
+            .collect::<Vec<_>>()
+            .join(" ");
 
         let mut secrets = HashMap::new();
         secrets.insert("TOKEN".to_string(), "bearer-xyz".to_string());
