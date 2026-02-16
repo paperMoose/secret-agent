@@ -1,20 +1,29 @@
 use crate::vault::Vault;
 use anyhow::{Context, Result};
 
-pub fn run(name: &str, unsafe_display: bool) -> Result<()> {
-    if !unsafe_display {
+pub fn run(name: &str, clipboard: bool, unsafe_display: bool, quiet: bool) -> Result<()> {
+    if !clipboard && !unsafe_display {
         anyhow::bail!(
-            "You must use --unsafe-display to show secret values.\n\
-             WARNING: This will display the secret in plaintext.\n\
-             Do not use in agent contexts or logged sessions."
+            "You must use --clipboard or --unsafe-display to retrieve a secret.\n\
+             --clipboard copies to clipboard (safe for agents)\n\
+             --unsafe-display prints to stdout (NOT for agent use)"
         );
     }
 
     let vault = Vault::open().context("failed to open vault")?;
     let value = vault.get(name).context("failed to get secret")?;
 
-    eprintln!("WARNING: Displaying secret value. Do not use in agent contexts.");
-    println!("{}", value);
+    if clipboard {
+        let mut cb = arboard::Clipboard::new().context("failed to access clipboard")?;
+        cb.set_text(&value)
+            .context("failed to copy secret to clipboard")?;
+        if !quiet {
+            println!("Copied {} to clipboard", name);
+        }
+    } else {
+        eprintln!("WARNING: Displaying secret value. Do not use in agent contexts.");
+        println!("{}", value);
+    }
 
     Ok(())
 }

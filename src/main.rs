@@ -34,8 +34,9 @@ fn main() {
 
         Commands::Get {
             name,
+            clipboard,
             unsafe_display,
-        } => commands::get::run(&name, unsafe_display),
+        } => commands::get::run(&name, clipboard, unsafe_display, quiet),
 
         Commands::Exec {
             env_secrets,

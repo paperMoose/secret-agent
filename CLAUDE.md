@@ -110,6 +110,14 @@ secret-agent env export --file .env API_KEY DB_PASS
 secret-agent env export --file .env --all
 ```
 
+### Copy secret to clipboard (safe for agents)
+```bash
+# Agent can put a secret in the user's clipboard without ever seeing the value
+secret-agent get API_KEY --clipboard
+
+# Works on macOS (pbcopy) and Linux (X11/Wayland)
+```
+
 ### Debug (not for agent use)
 ```bash
 # Display a secret value (requires explicit safety flag)

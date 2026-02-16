@@ -83,17 +83,21 @@ pub enum Commands {
         name: String,
     },
 
-    /// Display a secret value (requires explicit --unsafe-display flag)
-    #[command(after_help = "WARNING: This displays the secret in plaintext.
-Do not use in AI agent contexts or logged sessions.
+    /// Retrieve a secret value (to clipboard or display)
+    #[command(after_help = "Copy to clipboard (safe for agent use):
+  secret-agent get API_KEY --clipboard
 
-Example:
+Display in plaintext (NOT for agent use):
   secret-agent get API_KEY --unsafe-display")]
     Get {
         /// Name of the secret to retrieve
         name: String,
 
-        /// Required safety flag - confirms you want to display the secret in plaintext
+        /// Copy secret to clipboard (never displayed, safe for agents)
+        #[arg(long)]
+        clipboard: bool,
+
+        /// Display the secret in plaintext (NOT for agent use)
         #[arg(long)]
         unsafe_display: bool,
     },

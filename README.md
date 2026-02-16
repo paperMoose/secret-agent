@@ -71,6 +71,9 @@ secret-agent create DB_PASS --length 32
 cat private_key.pem | secret-agent import TLS_KEY
 secret-agent exec --env TLS_KEY my-deploy-script
 
+# Copy a secret to clipboard (agent never sees value)
+secret-agent get API_KEY --clipboard
+
 # Write secrets to .env files (agent never sees values)
 secret-agent inject DB_PASS --file .env --env-format
 
@@ -114,6 +117,7 @@ If you prefer system keychain (macOS Keychain, GNOME Keyring):
 | `import NAME` | Import from stdin or `--clipboard` (`--replace` to overwrite). Supports multiline (PEM files, certs) |
 | `list` | Show secret names (`--bucket` to filter) |
 | `delete NAME` | Remove secret permanently |
+| `get NAME --clipboard` | Copy to clipboard (agent never sees value, works on macOS + Linux) |
 | `get NAME --unsafe-display` | Show value (debug only, not for agent use) |
 | `exec --env KEY cmd` | Run with secrets as env vars + sanitized output (supports multiline) |
 | `exec cmd {{KEY}}` | Run with secrets templated into command string (single-line only) |
