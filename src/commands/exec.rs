@@ -111,7 +111,16 @@ fn inject_secrets(command: &str, secrets: &HashMap<String, String>) -> String {
 
     for (name, value) in secrets {
         let placeholder = format!("{{{{{}}}}}", name);
-        result = result.replace(&placeholder, value);
+        if result.contains(&placeholder) {
+            if value.contains('\n') {
+                let display = format!("{{{{{}}}}}", name);
+                eprintln!(
+                    "warning: secret '{}' contains newlines. Template injection ({}) is not safe for multiline values. Use --env instead.",
+                    name, display
+                );
+            }
+            result = result.replace(&placeholder, value);
+        }
     }
 
     result
@@ -418,6 +427,31 @@ mod tests {
         secrets.insert("KEY".to_string(), "my-secret-value".to_string());
         let injected = inject_secrets(&command, &secrets);
         assert_eq!(injected, "sh -c 'echo \"my-secret-value\"'");
+    }
+
+    #[test]
+    fn test_inject_multiline_secret_raw() {
+        // Multiline values get injected raw (with a warning to stderr)
+        // Users should use --env for multiline secrets instead of {{}} templates
+        let mut secrets = HashMap::new();
+        secrets.insert(
+            "CERT".to_string(),
+            "line1\nline2\nline3".to_string(),
+        );
+        let cmd = "echo {{CERT}}";
+        let result = inject_secrets(cmd, &secrets);
+        assert_eq!(result, "echo line1\nline2\nline3");
+    }
+
+    #[test]
+    fn test_inject_skips_unused_secrets() {
+        // Secrets not referenced as placeholders should not trigger warnings
+        let mut secrets = HashMap::new();
+        secrets.insert("USED".to_string(), "value1".to_string());
+        secrets.insert("UNUSED".to_string(), "multi\nline".to_string());
+        let cmd = "echo {{USED}}";
+        let result = inject_secrets(cmd, &secrets);
+        assert_eq!(result, "echo value1");
     }
 
     #[test]

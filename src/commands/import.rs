@@ -1,6 +1,6 @@
 use crate::vault::Vault;
 use anyhow::{Context, Result};
-use std::io::{self, BufRead};
+use std::io::{self, Read};
 
 pub fn run(name: &str, clipboard: bool, replace: bool, quiet: bool) -> Result<()> {
     let vault = Vault::open().context("failed to open vault")?;
@@ -57,18 +57,15 @@ fn read_secret_value() -> Result<String> {
             .context("failed to read secret value")?;
         Ok(value)
     } else {
-        // Read from stdin (piped input)
+        // Read from stdin (piped input) - read all content for multiline values (e.g. PEM files)
         let stdin = io::stdin();
         let mut value = String::new();
         stdin
             .lock()
-            .read_line(&mut value)
+            .read_to_string(&mut value)
             .context("failed to read from stdin")?;
 
-        // Trim trailing newline
-        Ok(value
-            .trim_end_matches('\n')
-            .trim_end_matches('\r')
-            .to_string())
+        // Trim trailing whitespace
+        Ok(value.trim_end().to_string())
     }
 }

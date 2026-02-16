@@ -46,12 +46,24 @@ secret-agent create API_KEY --force             # Overwrite existing
 # From clipboard (clears after reading)
 secret-agent import OPENAI_KEY --clipboard
 
-# From stdin
+# From stdin (single-line)
 echo "sk-..." | secret-agent import API_KEY
 
 # Replace existing secret
 echo "new_value" | secret-agent import EXISTING_KEY --replace
 ```
+
+### Import PEM files, certificates, and key pairs
+```bash
+# Pipe multiline content directly - full content is preserved
+cat private_key.pem | secret-agent import TLS_KEY
+cat certificate.pem | secret-agent import TLS_CERT
+
+# Use --env to pass multiline secrets (NOT {{}} templates)
+secret-agent exec --env TLS_KEY my-deploy-script
+secret-agent exec --env TLS_CERT:SSL_CERT nginx -c /etc/nginx.conf
+```
+Note: `--env` is the correct way to use multiline secrets. The `{{PLACEHOLDER}}` template syntax is for single-line values like API keys only.
 
 ### List and delete
 ```bash

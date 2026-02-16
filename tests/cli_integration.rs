@@ -11,7 +11,7 @@ fn secret_agent() -> Command {
 /// Create a temporary vault directory for isolated tests
 fn setup_test_env() -> TempDir {
     let dir = TempDir::new().unwrap();
-    std::env::set_var("SECRET_AGENT_VAULT_DIR", dir.path());
+    std::env::set_var("SECRET_AGENT_VAULT_PATH", dir.path().join("vault.db"));
     std::env::set_var("SECRET_AGENT_USE_FILE", "1");
     dir
 }
@@ -459,6 +459,55 @@ fn test_exec_template_with_json_data() {
     // Cleanup
     secret_agent()
         .args(["delete", "TEST_JSON_KEY"])
+        .assert()
+        .success();
+}
+
+#[test]
+#[serial]
+fn test_import_multiline_pem() {
+    let _dir = setup_test_env();
+
+    let pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA0Z3VS5JJ\ncds3xfn/ygWyF2PbnGcY\n-----END RSA PRIVATE KEY-----";
+
+    // Import multiline PEM via stdin
+    secret_agent()
+        .args(["import", "TEST_PEM_KEY"])
+        .write_stdin(pem)
+        .assert()
+        .success();
+
+    // Verify full content is stored via --env injection
+    secret_agent()
+        .args([
+            "exec",
+            "--env",
+            "TEST_PEM_KEY:CERT",
+            "sh",
+            "-c",
+            "echo \"$CERT\" | wc -l",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("4"));
+
+    // Verify the value is redacted in output (renamed env var uses CERT as redaction key)
+    secret_agent()
+        .args([
+            "exec",
+            "--env",
+            "TEST_PEM_KEY:CERT",
+            "sh",
+            "-c",
+            "echo \"$CERT\"",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("[REDACTED:"));
+
+    // Cleanup
+    secret_agent()
+        .args(["delete", "TEST_PEM_KEY"])
         .assert()
         .success();
 }

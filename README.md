@@ -61,13 +61,15 @@ secret-agent import OPENAI_KEY
 secret-agent import OPENAI_KEY --clipboard
 
 # Use it in commands
+secret-agent exec --env OPENAI_KEY curl https://api.openai.com/v1/models
 secret-agent exec "curl -H 'Authorization: Bearer {{OPENAI_KEY}}' https://api.openai.com/v1/models"
 
 # Generate new secrets
 secret-agent create DB_PASS --length 32
 
-# Overwrite existing secret
-secret-agent create DB_PASS --length 32 --force
+# Import PEM files, certificates, and key pairs
+cat private_key.pem | secret-agent import TLS_KEY
+secret-agent exec --env TLS_KEY my-deploy-script
 
 # Write secrets to .env files (agent never sees values)
 secret-agent inject DB_PASS --file .env --env-format
@@ -109,12 +111,12 @@ If you prefer system keychain (macOS Keychain, GNOME Keyring):
 | Command | Description |
 |---------|-------------|
 | `create NAME` | Generate random secret (`--length`, `--charset`, `--force`) |
-| `import NAME` | Import from stdin or `--clipboard` (`--replace` to overwrite) |
+| `import NAME` | Import from stdin or `--clipboard` (`--replace` to overwrite). Supports multiline (PEM files, certs) |
 | `list` | Show secret names (`--bucket` to filter) |
 | `delete NAME` | Remove secret permanently |
 | `get NAME --unsafe-display` | Show value (debug only, not for agent use) |
-| `exec --env KEY cmd` | Run with secrets as env vars + sanitized output |
-| `exec cmd {{KEY}}` | Run with secrets templated into command string |
+| `exec --env KEY cmd` | Run with secrets as env vars + sanitized output (supports multiline) |
+| `exec cmd {{KEY}}` | Run with secrets templated into command string (single-line only) |
 | `inject NAME --file F` | Write to file (`--env-format`, `--placeholder`) |
 | `env import --file F` | Bulk import from .env file |
 | `env export --file F` | Bulk export to .env file (`--all` or specific names) |

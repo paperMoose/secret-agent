@@ -9,7 +9,7 @@ fn secret_agent() -> Command {
 
 fn setup_test_env() -> TempDir {
     let dir = TempDir::new().unwrap();
-    std::env::set_var("SECRET_AGENT_VAULT_DIR", dir.path());
+    std::env::set_var("SECRET_AGENT_VAULT_PATH", dir.path().join("vault.db"));
     std::env::set_var("SECRET_AGENT_USE_FILE", "1");
     dir
 }
