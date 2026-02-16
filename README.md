@@ -108,25 +108,32 @@ If you prefer system keychain (macOS Keychain, GNOME Keyring):
 
 | Command | Description |
 |---------|-------------|
-| `create NAME` | Generate random secret |
-| `create NAME --force` | Overwrite existing secret |
-| `import NAME` | Import from stdin/prompt |
-| `import NAME --clipboard` | Import from clipboard (agent-friendly) |
-| `list` | Show secret names |
-| `delete NAME` | Remove secret |
-| `get NAME --unsafe-display` | Show value (debug only) |
-| `exec "cmd {{NAME}}"` | Run with injection + sanitization |
-| `inject NAME --file F` | Write to file |
-| `env export/import` | Sync with .env files |
+| `create NAME` | Generate random secret (`--length`, `--charset`, `--force`) |
+| `import NAME` | Import from stdin or `--clipboard` (`--replace` to overwrite) |
+| `list` | Show secret names (`--bucket` to filter) |
+| `delete NAME` | Remove secret permanently |
+| `get NAME --unsafe-display` | Show value (debug only, not for agent use) |
+| `exec --env KEY cmd` | Run with secrets as env vars + sanitized output |
+| `exec cmd {{KEY}}` | Run with secrets templated into command string |
+| `inject NAME --file F` | Write to file (`--env-format`, `--placeholder`) |
+| `env import --file F` | Bulk import from .env file |
+| `env export --file F` | Bulk export to .env file (`--all` or specific names) |
 
-Global flags:
-- `-q, --quiet` — Suppress informational output
+Buckets: Use `bucket/name` syntax (e.g., `prod/API_KEY`) to organize secrets. Bucket prefix is stripped when injecting as env vars.
 
-## Status
+Global flags: `-q, --quiet` — Suppress informational output
 
-🚧 **Under active development** — not yet ready for production use.
+## Claude Code Integration
 
-See [SPEC.md](./SPEC.md) for the full design.
+To let Claude use secret-agent in all your projects, add this to your `~/.claude/CLAUDE.md`:
+
+```markdown
+## Secrets Management (secret-agent)
+
+@~/git/secret-agent/CLAUDE.md
+```
+
+If you don't have the repo cloned, you can copy the usage reference from [CLAUDE.md](./CLAUDE.md) directly into your `~/.claude/CLAUDE.md` instead.
 
 ## License
 
