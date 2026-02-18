@@ -434,10 +434,7 @@ mod tests {
         // Multiline values get injected raw (with a warning to stderr)
         // Users should use --env for multiline secrets instead of {{}} templates
         let mut secrets = HashMap::new();
-        secrets.insert(
-            "CERT".to_string(),
-            "line1\nline2\nline3".to_string(),
-        );
+        secrets.insert("CERT".to_string(), "line1\nline2\nline3".to_string());
         let cmd = "echo {{CERT}}";
         let result = inject_secrets(cmd, &secrets);
         assert_eq!(result, "echo line1\nline2\nline3");
