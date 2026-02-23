@@ -10,6 +10,7 @@ secret-agent, it injects secrets and sanitizes output so sensitive values
 never appear in logs or AI context windows.")]
 #[command(version)]
 #[command(after_help = "Examples:
+  secret-agent setup                               Set up Claude Code integration
   secret-agent create API_KEY                      Generate a random secret
   secret-agent import GITHUB_TOKEN --clipboard     Import from clipboard
   secret-agent exec --env API_KEY -- curl ...      Run command with secret as env var
@@ -163,6 +164,16 @@ are replaced with [REDACTED:NAME] so they never leak to logs or agents.")]
     Env {
         #[command(subcommand)]
         action: EnvAction,
+    },
+
+    /// Set up Claude Code integration (append usage reference to ~/.claude/CLAUDE.md)
+    #[command(after_help = "Examples:
+  secret-agent setup              Append instructions to ~/.claude/CLAUDE.md
+  secret-agent setup --print      Print instructions to stdout")]
+    Setup {
+        /// Print the instructions to stdout instead of modifying files
+        #[arg(long)]
+        print: bool,
     },
 }
 

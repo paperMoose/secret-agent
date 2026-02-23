@@ -14,6 +14,12 @@ fn main() {
     let cli = Cli::parse();
     let quiet = cli.quiet;
 
+    if !quiet && !matches!(cli.command, Commands::Setup { .. }) && !commands::setup::is_configured()
+    {
+        eprintln!("Tip: run `secret-agent setup` to configure Claude Code integration");
+        eprintln!();
+    }
+
     let result = match cli.command {
         Commands::Create {
             name,
@@ -70,6 +76,8 @@ fn main() {
             }
             EnvAction::Import { file } => commands::env::import(&file, quiet),
         },
+
+        Commands::Setup { print } => commands::setup::run(print, quiet),
     };
 
     if let Err(e) = result {

@@ -6,3 +6,4 @@ pub mod get;
 pub mod import;
 pub mod inject;
 pub mod list;
+pub mod setup;
