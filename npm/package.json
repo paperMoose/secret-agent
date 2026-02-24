@@ -1,0 +1,40 @@
+{
+  "name": "secret-agent-cli",
+  "version": "0.4.4",
+  "description": "A CLI vault that keeps secrets out of AI agent traces. Run commands with injected secrets (secret-agent exec --env API_KEY node app.js), import secrets from clipboard or stdin, organize with buckets, and template into configs. Secrets never appear in agent context windows or logs.",
+  "keywords": [
+    "secrets",
+    "vault",
+    "cli",
+    "ai-agent",
+    "security",
+    "env",
+    "dotenv",
+    "credentials"
+  ],
+  "homepage": "https://github.com/paperMoose/secret-agent#readme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paperMoose/secret-agent"
+  },
+  "bin": {
+    "secret-agent": "run.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
+  "files": [
+    "install.js",
+    "run.js",
+    "bin/"
+  ]
+}
