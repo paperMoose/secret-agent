@@ -15,5 +15,8 @@ Thumbs.db
 # Local vault (never commit secrets!)
 .secret-agent/
 
+# npm wrapper binary
+npm/bin/
+
 # Test artifacts
 *.tmp

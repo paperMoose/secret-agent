@@ -10,6 +10,19 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check version sync
+        run: |
+          CARGO_VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          NPM_VERSION=$(node -p "require('./npm/package.json').version")
+          if [ "$CARGO_VERSION" != "$NPM_VERSION" ]; then
+            echo "Version mismatch: Cargo.toml=$CARGO_VERSION npm/package.json=$NPM_VERSION"
+            exit 1
+          fi
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
